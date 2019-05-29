@@ -1,0 +1,82 @@
+#!/bin/sh
+BASENAME="$(basename "$0")"
+
+verbose=0
+help=0
+now="now"
+later=""
+
+# {{{ Poor mans options parsing
+
+while [ $# -gt 0 ]
+do
+	case $1 in
+		--verbose)
+			verbose=1
+			;;
+		--help)
+			help=1
+			;;
+		-*)
+			echo > /dev/stderr "${BASENAME}: invalid option '$1'"
+			echo > /dev/stderr "Try '${BASENAME} --help' for more information."
+			exit 1
+			;;
+		*)
+			if [ -z "$later" ]
+			then
+				later="$1"
+			else
+				later="$later $1"
+			fi
+			;;
+	esac
+	shift
+done
+
+# }}}
+
+if [ $help -gt 0 ]
+then
+	cat <<-EOF
+	Usage: sleep-until [OPTIONS] [UNTIL]
+	
+	Example usage:
+
+	    sleep-until --help
+	    sleep-until tomorrow 3am
+	    sleep-until sunday next week
+	    sleep-until --verbose 2012-12-12 12:00:00 UTC
+	EOF
+	exit 0
+fi
+
+if [ -z "$later"  ]
+then
+	echo > /dev/stderr "${BASENAME}: missing operand"
+	echo > /dev/stderr "Try '${BASENAME} --help' for more information."
+	exit 1
+fi
+
+NOW="$(2>/dev/null date --date="$now" +%s)"
+LATER="$(2>/dev/null date --date="$later" +%s)"
+if [ -z "$LATER" ]
+then
+	echo > /dev/stderr "error: invalid date '$later'"
+	exit 1
+fi
+DELTA="$(expr $LATER - $NOW)"
+
+if [ $DELTA -gt 0 ]
+then
+	if [ $verbose -gt 0 ]
+	then
+		echo "Sleeping for $DELTA seconds until '$later'."
+	fi
+	exec sleep $DELTA
+else
+	if [ $verbose -gt 0 ]
+	then
+		echo "'$later' already passed. No time to sleep!"
+	fi
+fi
